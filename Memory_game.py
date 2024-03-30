@@ -3,6 +3,8 @@
 import pygame
 import random
 
+pygame.init()
+
 class Card:
     """Represents a single memory card."""
     def __init__(self, image, position):
@@ -26,11 +28,16 @@ class CardGame:
     CARD_SIZE = 100
     CARD_GAP = 20
     BOARD_ROWS, BOARD_COLS = 4, 4
-    # MATCH_SOUND_PATH = 'applepay.mp3'
+    FONT = pygame.font.SysFont("Arial", 24)
+    MATCH_SOUND_PATH = 'applepay.mp3'
+    UNMATCH_SOUND_PATH = 'engineer_no01.mp3'
+    RESET_BUTTON_COLOR = (50, 205, 50)
+    RESET_BUTTON_RECT = pygame.Rect(480, 10, 150, 40)
+    PLAY_AGAIN_BUTTON_RECT = pygame.Rect(480, 60, 150, 40)
 
     def __init__(self):
         """Initialize the game."""
-        pygame.init()
+        # pygame.init()
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         pygame.display.set_caption('Memory Game')
         self.clock = pygame.time.Clock()
@@ -39,9 +46,11 @@ class CardGame:
         self.load_card_images()
         self.create_board()
         self.start_ticks = pygame.time.get_ticks()  # Timer start
-        # pygame.mixer.init()  # Ensure the mixer is initialized
-        self.match_sound = pygame.mixer.Sound('applepay.mp3')  # Load the sound
-        self.unmatch_sound = pygame.mixer.Sound('engineer_no01.mp3')
+        self.match_sound = pygame.mixer.Sound(self.MATCH_SOUND_PATH)  
+        self.unmatch_sound = pygame.mixer.Sound(self.UNMATCH_SOUND_PATH)
+        self.reset_button_surf = self.FONT.render('Reset', True, (255, 255, 255))
+        self.play_again_button_surf = self.FONT.render('Play Again', True, (255, 255, 255))
+        self.well_done_surf = self.FONT.render('Well done!', True, (255, 215, 0))
 
     def load_card_images(self):
         """Load and return card images. For simplicity, using colored surfaces."""
@@ -62,6 +71,19 @@ class CardGame:
                             row * (self.CARD_SIZE + self.CARD_GAP) + self.CARD_GAP + y_offset)
                 card = Card(card_images.pop(), position)
                 self.cards.append(card)
+                
+    def draw_play_again_button(self):
+        """Draws the play again button."""
+        pygame.draw.rect(self.screen, self.RESET_BUTTON_COLOR, self.PLAY_AGAIN_BUTTON_RECT)
+        self.screen.blit(self.play_again_button_surf, (self.PLAY_AGAIN_BUTTON_RECT.x + 5, self.PLAY_AGAIN_BUTTON_RECT.y + 5))
+
+    def draw_well_done_message(self):
+        """Draws the well done message."""
+        text_rect = self.well_done_surf.get_rect(center=(self.SCREEN_WIDTH//2, self.SCREEN_HEIGHT//2))
+        self.screen.blit(self.well_done_surf, text_rect)
+        
+    def all_matched(self):
+        return all(card.matched for card in self.cards)
 
     def run(self):
         """Main game loop."""
@@ -74,6 +96,12 @@ class CardGame:
                     self.handle_click(pygame.mouse.get_pos())
 
             self.draw()
+            self.draw_reset_button()
+            
+            if self.all_matched():
+                self.draw_well_done_message()
+                self.draw_play_again_button()
+                
             # self.show_timer()  # Update to show the timer on the screen
             pygame.display.flip()
             self.clock.tick(60)
@@ -81,6 +109,12 @@ class CardGame:
 
     def handle_click(self, position):
         """Handle card selection and match checking."""
+        if self.RESET_BUTTON_RECT.collidepoint(position):
+            self.reset_game()
+            
+        if self.all_matched() and self.PLAY_AGAIN_BUTTON_RECT.collidepoint(position):
+            self.reset_game()
+            
         for card in self.cards:
             if card.rect.collidepoint(position) and not card.matched and not card.visible:
                 card.visible = True
@@ -109,6 +143,18 @@ class CardGame:
         for card in self.cards:
             card.draw(self.screen)
         self.show_timer()
+    
+    def draw_reset_button(self):
+        """Draws the reset button."""
+        pygame.draw.rect(self.screen, self.RESET_BUTTON_COLOR, self.RESET_BUTTON_RECT)
+        self.screen.blit(self.reset_button_surf, (self.RESET_BUTTON_RECT.x + 5, self.RESET_BUTTON_RECT.y + 5))
+        
+    def reset_game(self):
+        """Resets the game to the initial state."""
+        self.cards.clear()
+        self.selected_cards.clear()
+        self.create_board()
+        self.start_ticks = pygame.time.get_ticks()  # Reset the timer
             
     def show_timer(self):
         """Display the elapsed time on the screen."""
@@ -116,7 +162,7 @@ class CardGame:
         elapsed_seconds = elapsed_ticks // 1000  # Convert milliseconds to seconds
         minutes = elapsed_seconds // 60
         seconds = elapsed_seconds % 60
-        timer_font = pygame.font.SysFont("Arial", 24)
+        timer_font = self.FONT
         timer_surf = timer_font.render(f'Playing Time: {minutes:02}:{seconds:02}', True, (255, 255, 255))
         self.screen.blit(timer_surf, (self.SCREEN_WIDTH//2 - timer_surf.get_width()//2, 10))
 
