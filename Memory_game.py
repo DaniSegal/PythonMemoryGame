@@ -20,12 +20,13 @@ class Card:
 
 class CardGame:
     """Main class to manage game states and logic."""
-    SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
+    SCREEN_WIDTH, SCREEN_HEIGHT = 570, 600
     BACKGROUND_COLOR = (30, 30, 30)
     CARD_COLOR = (255, 255, 255)
     CARD_SIZE = 100
     CARD_GAP = 20
     BOARD_ROWS, BOARD_COLS = 4, 4
+    # MATCH_SOUND_PATH = 'applepay.mp3'
 
     def __init__(self):
         """Initialize the game."""
@@ -38,6 +39,9 @@ class CardGame:
         self.load_card_images()
         self.create_board()
         self.start_ticks = pygame.time.get_ticks()  # Timer start
+        # pygame.mixer.init()  # Ensure the mixer is initialized
+        self.match_sound = pygame.mixer.Sound('applepay.mp3')  # Load the sound
+        self.unmatch_sound = pygame.mixer.Sound('engineer_no01.mp3')
 
     def load_card_images(self):
         """Load and return card images. For simplicity, using colored surfaces."""
@@ -51,10 +55,11 @@ class CardGame:
         """Create and shuffle the board with pairs of cards."""
         card_images = self.card_images * 2  # Create pairs
         random.shuffle(card_images)
+        y_offset = 60
         for row in range(self.BOARD_ROWS):
             for col in range(self.BOARD_COLS):
                 position = (col * (self.CARD_SIZE + self.CARD_GAP) + self.CARD_GAP,
-                            row * (self.CARD_SIZE + self.CARD_GAP) + self.CARD_GAP)
+                            row * (self.CARD_SIZE + self.CARD_GAP) + self.CARD_GAP + y_offset)
                 card = Card(card_images.pop(), position)
                 self.cards.append(card)
 
@@ -65,11 +70,11 @@ class CardGame:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     self.handle_click(pygame.mouse.get_pos())
 
             self.draw()
-            self.show_timer()  # Update to show the timer on the screen
+            # self.show_timer()  # Update to show the timer on the screen
             pygame.display.flip()
             self.clock.tick(60)
         pygame.quit()
@@ -88,9 +93,11 @@ class CardGame:
         if self.selected_cards[0].image == self.selected_cards[1].image:
             for card in self.selected_cards:
                 card.matched = True
+            self.match_sound.play()
         else:
             self.draw()
             pygame.display.flip()
+            self.unmatch_sound.play()
             pygame.time.wait(500)  # Wait half a second
             for card in self.selected_cards:
                 card.visible = False
@@ -101,6 +108,7 @@ class CardGame:
         self.screen.fill(self.BACKGROUND_COLOR)
         for card in self.cards:
             card.draw(self.screen)
+        self.show_timer()
             
     def show_timer(self):
         """Display the elapsed time on the screen."""
@@ -110,7 +118,7 @@ class CardGame:
         seconds = elapsed_seconds % 60
         timer_font = pygame.font.SysFont("Arial", 24)
         timer_surf = timer_font.render(f'Playing Time: {minutes:02}:{seconds:02}', True, (255, 255, 255))
-        self.screen.blit(timer_surf, (5, 5))  # Position the timer at the top-left corner
+        self.screen.blit(timer_surf, (self.SCREEN_WIDTH//2 - timer_surf.get_width()//2, 10))
 
 # Uncomment the following lines to run the game
 game = CardGame()
