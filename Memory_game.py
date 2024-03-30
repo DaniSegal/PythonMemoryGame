@@ -1,88 +1,103 @@
+# Refactoring the memory game code into a class-based approach with improved structure and logic
+
 import pygame
 import random
 
-# Initialize Pygame
-pygame.init()
+class Card:
+    """Represents a single memory card."""
+    def __init__(self, image, position):
+        self.image = image
+        self.rect = pygame.Rect(position[0], position[1], CardGame.CARD_SIZE, CardGame.CARD_SIZE)
+        self.matched = False
+        self.visible = False
 
-# Game variables
-screen_width, screen_height = 640, 480
-background_color = (30, 30, 30)
-card_color = (255, 255, 255)
-card_size = 100
-card_gap = 20
-board_rows, board_cols = 4, 4
-cards = []
-selected_cards = []
-found_pairs = []
+    def draw(self, screen):
+        """Draw the card on the screen."""
+        if self.visible or self.matched:
+            screen.blit(self.image, self.rect)
+        else:
+            pygame.draw.rect(screen, CardGame.CARD_COLOR, self.rect)
 
-# Pygame setup
-screen = pygame.display.set_mode((screen_width, screen_height))
-pygame.display.set_caption('Memory Game')
-clock = pygame.time.Clock()
+class CardGame:
+    """Main class to manage game states and logic."""
+    SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
+    BACKGROUND_COLOR = (30, 30, 30)
+    CARD_COLOR = (255, 255, 255)
+    CARD_SIZE = 100
+    CARD_GAP = 20
+    BOARD_ROWS, BOARD_COLS = 4, 4
 
-def load_card_images():
-    # Placeholder: Use solid colors for simplicity. Replace with image loading for more complexity.
-    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 165, 0), (255, 20, 147), (0, 255, 255), (128, 0, 128)]
-    card_images = [pygame.Surface((card_size, card_size)) for _ in range(8)]
-    for i, card_image in enumerate(card_images):
-        card_image.fill(colors[i])
-    return card_images
+    def __init__(self):
+        """Initialize the game."""
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+        pygame.display.set_caption('Memory Game')
+        self.clock = pygame.time.Clock()
+        self.cards = []
+        self.selected_cards = []
+        self.load_card_images()
+        self.create_board()
 
-def create_board():
-    card_images = load_card_images() * 2 # Create pairs
-    random.shuffle(card_images)
-    for row in range(board_rows):
-        row_cards = []
-        for col in range(board_cols):
-            position = (col * (card_size + card_gap) + card_gap, 
-                        row * (card_size + card_gap) + card_gap)
-            card = {'rect': pygame.Rect(position[0], position[1], card_size, card_size),
-                    'image': card_images.pop(),
-                    'matched': False}
-            row_cards.append(card)
-        cards.append(row_cards)
+    def load_card_images(self):
+        """Load and return card images. For simplicity, using colored surfaces."""
+        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
+                  (255, 165, 0), (255, 20, 147), (0, 255, 255), (128, 0, 128)]
+        self.card_images = [pygame.Surface((self.CARD_SIZE, self.CARD_SIZE)) for _ in range(8)]
+        for i, card_image in enumerate(self.card_images):
+            card_image.fill(colors[i])
 
-def select_card(position):
-    for row in cards:
-        for card in row:
-            if card['rect'].collidepoint(position) and not card['matched']:
-                return card
-    return None
+    def create_board(self):
+        """Create and shuffle the board with pairs of cards."""
+        card_images = self.card_images * 2  # Create pairs
+        random.shuffle(card_images)
+        for row in range(self.BOARD_ROWS):
+            for col in range(self.BOARD_COLS):
+                position = (col * (self.CARD_SIZE + self.CARD_GAP) + self.CARD_GAP,
+                            row * (self.CARD_SIZE + self.CARD_GAP) + self.CARD_GAP)
+                card = Card(card_images.pop(), position)
+                self.cards.append(card)
 
-def game_loop():
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                # Handle card selection
-                card = select_card(pygame.mouse.get_pos())
-                if card and card not in selected_cards:
-                    selected_cards.append(card)
-                    if len(selected_cards) == 2:
-                        # Check for a match
-                        if selected_cards[0]['image'] == selected_cards[1]['image']:
-                            for selected_card in selected_cards:
-                                selected_card['matched'] = True
-                            selected_cards.clear()
-                        else:
-                            pygame.time.wait(500) # Wait half a second
-                            selected_cards.clear()
+    def run(self):
+        """Main game loop."""
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    self.handle_click(pygame.mouse.get_pos())
 
-        screen.fill(background_color)
-        
-        for row in cards:
-            for card in row:
-                if card in selected_cards or card['matched']:
-                    pygame.draw.rect(screen, (200, 200, 200), card['rect'])  # Show card or matched card
-                    screen.blit(card['image'], card['rect'])
-                else:
-                    pygame.draw.rect(screen, card_color, card['rect'])  # Cover card
-                    
-        pygame.display.flip()
-        clock.tick(60)
+            self.draw()
+            pygame.display.flip()
+            self.clock.tick(60)
+        pygame.quit()
 
-create_board()
-game_loop()
-pygame.quit()
+    def handle_click(self, position):
+        """Handle card selection and match checking."""
+        for card in self.cards:
+            if card.rect.collidepoint(position) and not card.matched and not card.visible:
+                card.visible = True
+                self.selected_cards.append(card)
+                if len(self.selected_cards) == 2:
+                    self.check_for_match()
+
+    def check_for_match(self):
+        """Check if the selected cards are a match."""
+        if self.selected_cards[0].image == self.selected_cards[1].image:
+            for card in self.selected_cards:
+                card.matched = True
+        else:
+            pygame.time.wait(500)  # Wait half a second
+        for card in self.selected_cards:
+            card.visible = False
+        self.selected_cards.clear()
+
+    def draw(self):
+        """Draw the game components."""
+        self.screen.fill(self.BACKGROUND_COLOR)
+        for card in self.cards:
+            card.draw(self.screen)
+
+# Uncomment the following lines to run the game
+game = CardGame()
+game.run()
