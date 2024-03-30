@@ -35,6 +35,7 @@ class CardGame:
     RESET_BUTTON_RECT = pygame.Rect(480, 10, 150, 40)
     PLAY_AGAIN_BUTTON_RECT = pygame.Rect(480, 60, 150, 40)
     MATCHED_CARDS = 0
+    MATCH_TRIES = 0
 
     def __init__(self):
         """Initialize the game."""
@@ -51,7 +52,10 @@ class CardGame:
         self.unmatch_sound = pygame.mixer.Sound(self.UNMATCH_SOUND_PATH)
         self.reset_button_surf = self.FONT.render('Reset', True, (255, 255, 255))
         self.play_again_button_surf = self.FONT.render('Play Again', True, (255, 255, 255))
+        self.matched_cards = 0
+        self.match_tries_count = 0
         self.well_done_surf = self.FONT.render('Well done!', True, (255, 215, 0))
+        
 
     def load_card_images(self):
         """Load and return card images. For simplicity, using colored surfaces."""
@@ -80,11 +84,14 @@ class CardGame:
 
     def draw_well_done_message(self):
         """Draws the well done message."""
-        text_rect = self.well_done_surf.get_rect(center=(self.SCREEN_WIDTH//2, self.SCREEN_HEIGHT//2))
+         # Update to generate the message dynamically with the current number of tries
+        well_done_text = f'Well done! You did it in {self.match_tries_count} tries, think you can do better?'
+        self.well_done_surf = self.FONT.render(well_done_text, True, (255, 215, 0), self.BACKGROUND_COLOR)
+        text_rect = self.well_done_surf.get_rect(center=(self.SCREEN_WIDTH//2, self.SCREEN_HEIGHT//2 - 50))
         self.screen.blit(self.well_done_surf, text_rect)
         
     def all_matched(self):
-        return self.MATCHED_CARDS == 16
+        return self.matched_cards == 16
     
     def update_cursor(self):
         """Updates the cursor image based on its position."""
@@ -136,6 +143,8 @@ class CardGame:
                 self.selected_cards.append(card)
                 if len(self.selected_cards) == 2:
                     self.check_for_match()
+                    self.match_tries_count += 1
+                    
 
     def check_for_match(self):
         """Check if the selected cards are a match."""
@@ -143,7 +152,7 @@ class CardGame:
             for card in self.selected_cards:
                 card.matched = True
             self.match_sound.play()
-            self.MATCHED_CARDS += 2
+            self.matched_cards += 2
         else:
             self.draw_game_components()
             pygame.display.flip()
@@ -160,6 +169,12 @@ class CardGame:
             card.draw(self.screen)
         self.show_timer()
         
+        """Draws the tries counter on the screen."""
+        tries_text = f'Tries: {self.match_tries_count}'
+        tries_surf = self.FONT.render(tries_text, True, (255, 255, 255))
+        # Choose an appropriate position on the screen
+        self.screen.blit(tries_surf, (10, self.SCREEN_HEIGHT - 30))
+        
         if(not self.all_matched()): 
             pygame.draw.rect(self.screen, self.RESET_BUTTON_COLOR, self.RESET_BUTTON_RECT)
             self.screen.blit(self.reset_button_surf, (self.RESET_BUTTON_RECT.x + 5, self.RESET_BUTTON_RECT.y + 5))
@@ -168,7 +183,8 @@ class CardGame:
         """Resets the game to the initial state."""
         self.cards.clear()
         self.selected_cards.clear()
-        self.MATCHED_CARDS = 0
+        self.matched_cards = 0
+        self.match_tries_count = 0
         self.create_board()
         self.start_ticks = pygame.time.get_ticks()  # Reset the timer
             
