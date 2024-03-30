@@ -37,6 +37,7 @@ class CardGame:
         self.selected_cards = []
         self.load_card_images()
         self.create_board()
+        self.start_ticks = pygame.time.get_ticks()  # Timer start
 
     def load_card_images(self):
         """Load and return card images. For simplicity, using colored surfaces."""
@@ -68,6 +69,7 @@ class CardGame:
                     self.handle_click(pygame.mouse.get_pos())
 
             self.draw()
+            self.show_timer()  # Update to show the timer on the screen
             pygame.display.flip()
             self.clock.tick(60)
         pygame.quit()
@@ -87,9 +89,11 @@ class CardGame:
             for card in self.selected_cards:
                 card.matched = True
         else:
+            self.draw()
+            pygame.display.flip()
             pygame.time.wait(500)  # Wait half a second
-        for card in self.selected_cards:
-            card.visible = False
+            for card in self.selected_cards:
+                card.visible = False
         self.selected_cards.clear()
 
     def draw(self):
@@ -97,6 +101,16 @@ class CardGame:
         self.screen.fill(self.BACKGROUND_COLOR)
         for card in self.cards:
             card.draw(self.screen)
+            
+    def show_timer(self):
+        """Display the elapsed time on the screen."""
+        elapsed_ticks = pygame.time.get_ticks() - self.start_ticks
+        elapsed_seconds = elapsed_ticks // 1000  # Convert milliseconds to seconds
+        minutes = elapsed_seconds // 60
+        seconds = elapsed_seconds % 60
+        timer_font = pygame.font.SysFont("Arial", 24)
+        timer_surf = timer_font.render(f'Playing Time: {minutes:02}:{seconds:02}', True, (255, 255, 255))
+        self.screen.blit(timer_surf, (5, 5))  # Position the timer at the top-left corner
 
 # Uncomment the following lines to run the game
 game = CardGame()
