@@ -42,6 +42,10 @@ class CardGame:
         # pygame.init()
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         pygame.display.set_caption('Memory Game')
+        self.player_scores = [0, 0]  # Scores for player 1 and player 2
+        self.current_player = 0  # Index of the current player
+        self.num_players = 1  # Default to single player game
+        self.player_turn_text_surf = None
         self.clock = pygame.time.Clock()
         self.cards = []
         self.selected_cards = []
@@ -54,7 +58,11 @@ class CardGame:
         self.play_again_button_surf = self.FONT.render('Play Again', True, (255, 255, 255))
         self.matched_cards = 0
         self.match_tries_count = 0
-        self.well_done_surf = self.FONT.render('Well done!', True, (255, 215, 0))
+        self.well_done_surf = None
+        self.game_state = 'player_selection'  # Start with player selection
+        self.one_player_button_rect = pygame.Rect(150, 250, 250, 50)
+        self.two_player_button_rect = pygame.Rect(150, 320, 250, 50)
+        self.update_player_turn_text()
         
 
     def load_card_images(self):
@@ -64,6 +72,17 @@ class CardGame:
         self.card_images = [pygame.Surface((self.CARD_SIZE, self.CARD_SIZE)) for _ in range(8)]
         for i, card_image in enumerate(self.card_images):
             card_image.fill(colors[i])
+    
+    def update_player_turn_text(self):
+        """Updates the player turn text based on the current player."""
+        turn_text = f"Player {self.current_player + 1}'s Turn"
+        self.player_turn_text_surf = self.FONT.render(turn_text, True, (255, 255, 255))
+
+    def toggle_player_turn(self):
+        """Toggles the turn between player 1 and player 2."""
+        if self.num_players == 2:
+            self.current_player = (self.current_player + 1) % 2
+            self.update_player_turn_text()
 
     def create_board(self):
         """Create and shuffle the board with pairs of cards."""
@@ -81,6 +100,28 @@ class CardGame:
         """Draws the play again button."""
         pygame.draw.rect(self.screen, self.RESET_BUTTON_COLOR, self.PLAY_AGAIN_BUTTON_RECT)
         self.screen.blit(self.play_again_button_surf, (self.PLAY_AGAIN_BUTTON_RECT.x + 5, self.PLAY_AGAIN_BUTTON_RECT.y + 5))
+        
+    def draw_player_selection_screen(self):
+        """Draws the player selection screen."""
+        self.screen.fill(self.BACKGROUND_COLOR)
+        # Draw buttons for 1-player and 2-player modes
+        pygame.draw.rect(self.screen, (100, 200, 255), self.one_player_button_rect)
+        pygame.draw.rect(self.screen, (100, 200, 255), self.two_player_button_rect)
+        
+        one_player_text = self.FONT.render('1 Player', True, (255, 255, 255))
+        two_player_text = self.FONT.render('2 Players', True, (255, 255, 255))
+        
+        self.screen.blit(one_player_text, (self.one_player_button_rect.x + 50, self.one_player_button_rect.y + 10))
+        self.screen.blit(two_player_text, (self.two_player_button_rect.x + 50, self.two_player_button_rect.y + 10))
+        
+    def handle_player_selection(self, position):
+        """Handles player mode selection."""
+        if self.one_player_button_rect.collidepoint(position):
+            self.num_players = 1
+            self.game_state = 'playing'
+        elif self.two_player_button_rect.collidepoint(position):
+            self.num_players = 2
+            self.game_state = 'playing'
 
     def draw_well_done_message(self):
         """Draws the well done message."""
@@ -116,15 +157,20 @@ class CardGame:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    self.handle_click(pygame.mouse.get_pos())
+                    if self.game_state == 'player_selection':
+                        self.handle_player_selection(pygame.mouse.get_pos())
+                    else:
+                        self.handle_click(pygame.mouse.get_pos())
 
-            self.draw_game_components()
+            if self.game_state == 'player_selection':
+                self.draw_player_selection_screen()
+            else:
+                self.draw_game_components()
             
             if self.all_matched():
                 self.draw_well_done_message()
                 self.draw_play_again_button()
                 
-            # self.show_timer()  # Update to show the timer on the screen
             pygame.display.flip()
             self.clock.tick(60)
         pygame.quit()
@@ -142,15 +188,20 @@ class CardGame:
                 card.visible = True
                 self.selected_cards.append(card)
                 if len(self.selected_cards) == 2:
-                    self.check_for_match()
+                    match_found = self.check_for_match()
+                    if not match_found:
+                        self.toggle_player_turn()
                     self.match_tries_count += 1
                     
 
     def check_for_match(self):
         """Check if the selected cards are a match."""
+        match_found = False
         if self.selected_cards[0].image == self.selected_cards[1].image:
             for card in self.selected_cards:
                 card.matched = True
+            self.player_scores[self.current_player] += 1  # Update score for current player
+            match_found = True    
             self.match_sound.play()
             self.matched_cards += 2
         else:
@@ -161,6 +212,7 @@ class CardGame:
             for card in self.selected_cards:
                 card.visible = False
         self.selected_cards.clear()
+        return match_found
 
     def draw_game_components(self):
         """Draw the game components."""
@@ -175,6 +227,15 @@ class CardGame:
         # Choose an appropriate position on the screen
         self.screen.blit(tries_surf, (10, self.SCREEN_HEIGHT - 30))
         
+        # Draw player scores and turn indication
+        for i, score in enumerate(self.player_scores):
+            score_text = f"Player {i + 1} Score: {score}"
+            score_surf = self.FONT.render(score_text, True, (255, 255, 255))
+            self.screen.blit(score_surf, (10, 30 * i + 10))
+            
+        # Draw the current player's turn indication
+        self.screen.blit(self.player_turn_text_surf, (self.SCREEN_WIDTH - 200, 10))
+
         if(not self.all_matched()): 
             pygame.draw.rect(self.screen, self.RESET_BUTTON_COLOR, self.RESET_BUTTON_RECT)
             self.screen.blit(self.reset_button_surf, (self.RESET_BUTTON_RECT.x + 5, self.RESET_BUTTON_RECT.y + 5))
@@ -187,6 +248,9 @@ class CardGame:
         self.match_tries_count = 0
         self.create_board()
         self.start_ticks = pygame.time.get_ticks()  # Reset the timer
+        self.player_scores = [0, 0]
+        self.current_player = 0
+        self.update_player_turn_text()
             
     def show_timer(self):
         """Display the elapsed time on the screen."""
