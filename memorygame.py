@@ -2,6 +2,8 @@
 
 import pygame
 import random
+import GameState
+import GUI
 
 pygame.init()
 
@@ -9,7 +11,7 @@ class Card:
     """Represents a single memory card."""
     def __init__(self, image, position):
         self.image = image
-        self.rect = pygame.Rect(position[0], position[1], CardGame.CARD_SIZE, CardGame.CARD_SIZE)
+        self.rect = pygame.Rect(position[0], position[1], MemGame.CARD_SIZE, MemGame.CARD_SIZE)
         self.matched = False
         self.visible = False
 
@@ -18,11 +20,42 @@ class Card:
         if self.visible or self.matched:
             screen.blit(self.image, self.rect)
         else:
-            pygame.draw.rect(screen, CardGame.CARD_COLOR, self.rect)
+            pygame.draw.rect(screen, MemGame.CARD_COLOR, self.rect)
 
-class CardGame:
+    
+class GameManager:
+    def __init__(self, game):
+        self.game = game
+        self.game_state = GameState.State.PLAYER_SELECTION
+        
+    def draw_player_selection_screen(self):
+        """Draws the player selection screen."""
+        screen = self.game.screen
+        screen.fill(MemGame.BACKGROUND_COLOR)
+        # Note: Use self.game.one_player_button_rect as an example of how to properly reference attributes
+        pygame.draw.rect(screen, (100, 200, 255), self.game.one_player_button_rect)
+        pygame.draw.rect(screen, (100, 200, 255), self.game.two_player_button_rect)
+            
+        one_player_text = MemGame.FONT.render('1 Player', True, (255, 255, 255))
+        two_player_text = MemGame.FONT.render('2 Players', True, (255, 255, 255))
+        
+        screen.blit(one_player_text, (self.game.one_player_button_rect.x + 50, self.game.one_player_button_rect.y + 10))
+        screen.blit(two_player_text, (self.game.two_player_button_rect.x + 50, self.game.two_player_button_rect.y + 10))
+        
+    def handle_player_selection(self, position):
+        """Updated to correctly modify game_state of GameManager instance."""
+        if self.game.one_player_button_rect.collidepoint(position):
+            self.game.num_players = 1
+            self.game_state = GameState.State.PLAYING
+        elif self.game.two_player_button_rect.collidepoint(position):
+            self.game.num_players = 2
+            self.game_state = GameState.State.PLAYING
+
+
+
+class MemGame:
     """Main class to manage game states and logic."""
-    SCREEN_WIDTH, SCREEN_HEIGHT = 570, 600
+    SCREEN_WIDTH, SCREEN_HEIGHT = 650, 600
     BACKGROUND_COLOR = (30, 30, 30)
     CARD_COLOR = (255, 255, 255)
     CARD_SIZE = 100
@@ -59,9 +92,9 @@ class CardGame:
         self.matched_cards = 0
         self.match_tries_count = 0
         self.well_done_surf = None
-        self.game_state = 'player_selection'  # Start with player selection
         self.one_player_button_rect = pygame.Rect(150, 250, 250, 50)
         self.two_player_button_rect = pygame.Rect(150, 320, 250, 50)
+        self.manager = GameManager(self)
         self.update_player_turn_text()
         
 
@@ -100,28 +133,6 @@ class CardGame:
         """Draws the play again button."""
         pygame.draw.rect(self.screen, self.RESET_BUTTON_COLOR, self.PLAY_AGAIN_BUTTON_RECT)
         self.screen.blit(self.play_again_button_surf, (self.PLAY_AGAIN_BUTTON_RECT.x + 5, self.PLAY_AGAIN_BUTTON_RECT.y + 5))
-        
-    def draw_player_selection_screen(self):
-        """Draws the player selection screen."""
-        self.screen.fill(self.BACKGROUND_COLOR)
-        # Draw buttons for 1-player and 2-player modes
-        pygame.draw.rect(self.screen, (100, 200, 255), self.one_player_button_rect)
-        pygame.draw.rect(self.screen, (100, 200, 255), self.two_player_button_rect)
-        
-        one_player_text = self.FONT.render('1 Player', True, (255, 255, 255))
-        two_player_text = self.FONT.render('2 Players', True, (255, 255, 255))
-        
-        self.screen.blit(one_player_text, (self.one_player_button_rect.x + 50, self.one_player_button_rect.y + 10))
-        self.screen.blit(two_player_text, (self.two_player_button_rect.x + 50, self.two_player_button_rect.y + 10))
-        
-    def handle_player_selection(self, position):
-        """Handles player mode selection."""
-        if self.one_player_button_rect.collidepoint(position):
-            self.num_players = 1
-            self.game_state = 'playing'
-        elif self.two_player_button_rect.collidepoint(position):
-            self.num_players = 2
-            self.game_state = 'playing'
 
     def draw_well_done_message(self):
         """Draws the well done message."""
@@ -149,7 +160,6 @@ class CardGame:
         return rect.collidepoint(pygame.mouse.get_pos())
 
     def run(self):
-        """Main game loop."""
         running = True
         while running:
             self.update_cursor()
@@ -157,20 +167,20 @@ class CardGame:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.game_state == 'player_selection':
-                        self.handle_player_selection(pygame.mouse.get_pos())
-                    else:
+                    if self.manager.game_state == GameState.State.PLAYER_SELECTION:
+                        self.manager.handle_player_selection(pygame.mouse.get_pos())
+                    elif self.manager.game_state == GameState.State.PLAYING:
                         self.handle_click(pygame.mouse.get_pos())
 
-            if self.game_state == 'player_selection':
-                self.draw_player_selection_screen()
+            if self.manager.game_state == GameState.State.PLAYER_SELECTION:
+                self.manager.draw_player_selection_screen()
             else:
                 self.draw_game_components()
-            
+
             if self.all_matched():
                 self.draw_well_done_message()
                 self.draw_play_again_button()
-                
+
             pygame.display.flip()
             self.clock.tick(60)
         pygame.quit()
@@ -250,6 +260,7 @@ class CardGame:
         self.start_ticks = pygame.time.get_ticks()  # Reset the timer
         self.player_scores = [0, 0]
         self.current_player = 0
+        self.manager.game_state = GameState.State.PLAYER_SELECTION
         self.update_player_turn_text()
             
     def show_timer(self):
@@ -263,5 +274,5 @@ class CardGame:
         self.screen.blit(timer_surf, (self.SCREEN_WIDTH//2 - timer_surf.get_width()//2, 10))
 
 # Uncomment the following lines to run the game
-game = CardGame()
+game = MemGame()
 game.run()
