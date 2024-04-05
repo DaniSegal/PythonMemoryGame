@@ -20,6 +20,7 @@ class GUI:
 
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.font = pygame.font.SysFont("Arial", 24)
+        self.big_font = pygame.font.SysFont("Arial", 48)
         self.match_sound = pygame.mixer.Sound(self.MATCH_SOUND_PATH)
         self.unmatch_sound = pygame.mixer.Sound(self.UNMATCH_SOUND_PATH)
         self.well_done_surf = None
@@ -53,8 +54,10 @@ class GUI:
         seconds_left = max(duration - elapsed_time, 0)
         time_str = self.format_time(seconds_left)
         self.render_time(time_str, 50)  
+        
         if seconds_left <= 0:
-            pass  # Optionally, perform some action when the countdown is over
+            return False  
+        return True
 
     def draw_tries_counter(self):
         """Draws the tries counter on the screen."""
@@ -85,6 +88,41 @@ class GUI:
         text_rect = self.well_done_surf.get_rect(center=(self.SCREEN_WIDTH//2, self.SCREEN_HEIGHT//2 - 50))
         self.screen.blit(self.well_done_surf, text_rect)
         
+    def draw_game_over_screen(self):
+        """Draws the game over screen with a message."""
+        self.screen.fill(self.BACKGROUND_COLOR)  # Optional: Change to a darker shade if desired
+        game_over_text = "Game over, you lost."
+        game_over_surf = self.font.render(game_over_text, True, (255, 0, 0))  # Red color for the text
+        # Calculate the position to center the text
+        text_rect = game_over_surf.get_rect(center=(self.SCREEN_WIDTH // 2, self.SCREEN_HEIGHT // 2 - 50))
+        self.screen.blit(game_over_surf, text_rect)
+
+        # Optionally, you can also add a button or instruction to go back to the main menu or exit.
+        self.draw_play_again_button()
+
+        pygame.display.flip()  # Update the display   
+        
+    def draw_amazing_screen(self):
+        self.screen.fill((129, 205, 253))
+        
+        headline_text = "AMAZING"
+        headline_surf = self.big_font.render(headline_text, True, (0,0,128))
+        headline_rect = headline_surf.get_rect(center=(self.SCREEN_WIDTH // 2, self.SCREEN_HEIGHT // 3))
+
+        # Render the subtext
+        subtext = "You did it! you won attack mode"
+        subtext_surf = self.font.render(subtext, True, (0,0,128))
+        subtext_rect = subtext_surf.get_rect(center=(self.SCREEN_WIDTH // 2, self.SCREEN_HEIGHT // 3 + 40))
+
+        # Blit the texts onto the screen
+        self.screen.blit(headline_surf, headline_rect)
+        self.screen.blit(subtext_surf, subtext_rect)
+
+        self.draw_play_again_button()
+        pygame.display.flip()  # Update the display
+        
+        
+         
     def draw_button(self, rect, text, color=(255, 255, 255)):
         pygame.draw.rect(self.screen, color, rect)
         text_surface = self.font.render(text, True, (0, 0, 0))

@@ -24,18 +24,17 @@ class MemGame:
         self.selected_cards = []
         self.gui = GUI(self)
         
-        self.time_attack_round_duration = 60
         self.matched_cards = 0
         self.match_tries_count = 0
         self.load_card_images()
         self.fill_cards_deck()
         self.update_player_turn_text()
 
+        self.time_attack_round_duration = 60
         self.clock = pygame.time.Clock()
-        self.start_ticks = pygame.time.get_ticks()
+        self.start_ticks = 0
         self.elapsed_time = 0
-        
-        
+            
     def fill_cards_deck(self):
         board_rows = self.gui.BOARD_ROWS
         board_cols = self.gui.BOARD_COLS
@@ -122,9 +121,9 @@ class MemGame:
 
     def handle_no_match_found(self):
         if self.game_state == GameState.TIME_ATTACK_MODE:
-            self.draw_time_attack_components()
+            self.attack_mode_logic()
         else:
-            self.draw_regular_game_components()
+            self.regular_game_logic()
         pygame.display.flip()
         self.gui.unmatch_sound.play()
         pygame.time.wait(500)  # Wait half a second
@@ -144,13 +143,8 @@ class MemGame:
         self.start_ticks = pygame.time.get_ticks()
         self.elapsed_time = 0
         
-        if self.game_state == GameState.TIME_ATTACK_MODE:
-            pass
-        else: 
-            self.game_state = GameState.PLAYER_SELECTION
+        if self.game_state == GameState.PLAYER_SELECTION:
             self.update_player_turn_text()
-            self.gui.start_ticks = pygame.time.get_ticks()  
-            self.time_attack_rounds_won = 0
             self.time_attack_round_duration = 60
                         
     def handle_player_selection(self, position):
@@ -164,6 +158,8 @@ class MemGame:
             self.num_players = 1
             self.game_state = GameState.TIME_ATTACK_MODE
             
+        self.start_ticks = pygame.time.get_ticks()
+            
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -175,18 +171,18 @@ class MemGame:
     def process_mouse_click(self, mouse_pos):
         if self.game_state == GameState.PLAYER_SELECTION:
             self.handle_player_selection(mouse_pos)
+            
         elif self.gui.RESET_BUTTON_RECT.collidepoint(mouse_pos):
+            self.game_state = GameState.PLAYER_SELECTION
             self.reset_game()    
-        elif self.all_matched() and self.gui.PLAY_AGAIN_BUTTON_RECT.collidepoint(mouse_pos):
+            
+        elif self.gui.PLAY_AGAIN_BUTTON_RECT.collidepoint(mouse_pos) and self.game_state == GameState.GAME_OVER:
+            self.game_state = GameState.PLAYER_SELECTION
             self.reset_game()
+            
         elif self.game_state in (GameState.SINGLE_PLAYER, GameState.TIME_ATTACK_MODE, GameState.TWO_PLAYERS):
             self.handle_card_selection(mouse_pos)
-            
-    def draw_time_attack_components(self):
-        self.gui.draw_board(self.cards_deck)
-        self.gui.draw_countdown_timer(self.elapsed_time, self.time_attack_round_duration)
-        
-                
+                          
     def draw_regular_game_components(self):
         self.gui.draw_board(self.cards_deck)
         self.gui.draw_timer()
@@ -197,28 +193,37 @@ class MemGame:
            self.gui.draw_reset_button()
     
     def attack_mode_logic(self):
-            self.draw_time_attack_components()
+        
+        self.gui.draw_board(self.cards_deck)
+        self.gui.draw_reset_button()
+        if(self.gui.draw_countdown_timer(self.elapsed_time, self.time_attack_round_duration)):
             if self.all_matched():
-                if self.time_attack_round_duration == 55:
-                    self.gui.draw_well_done_message()
-                    self.gui.draw_play_again_button()
+                if self.time_attack_round_duration == 30:
+                    self.game_state = GameState.GAME_OVER
+                    self.gui.draw_amazing_screen()
                 else:    
                     self.time_attack_round_duration -= 5
-                    self.reset_game()
+                    self.reset_game()     
+        elif self.game_state == GameState.TIME_ATTACK_MODE:
+            self.game_state = GameState.GAME_OVER
+            self.gui.draw_game_over_screen()
                          
     def regular_game_logic(self):
-            self.draw_regular_game_components() 
-            if self.all_matched():
-                    self.gui.draw_well_done_message()
-                    self.gui.draw_play_again_button()
-            
-                       
+        self.draw_regular_game_components() 
+        if self.all_matched():
+                self.game_state = GameState.GAME_OVER
+                self.gui.draw_well_done_message()
+                self.gui.draw_play_again_button()
+                          
     def run(self):
         running = True
         while running:
             self.update_cursor()
+            
             running = self.handle_events()
-            self.elapsed_time = int((pygame.time.get_ticks()-self.start_ticks)/1000)
+           
+            if self.game_state != GameState.GAME_OVER and self.game_state != GameState.PLAYER_SELECTION:
+                self.elapsed_time = int((pygame.time.get_ticks()-self.start_ticks)/1000)
             
             if self.game_state == GameState.PLAYER_SELECTION:
                 self.gui.draw_main_menu()
@@ -227,6 +232,7 @@ class MemGame:
             elif self.game_state != GameState.GAME_OVER:
                 self.regular_game_logic() 
             self.clock.tick(60)
+            
             pygame.display.flip()
             
         pygame.quit()
