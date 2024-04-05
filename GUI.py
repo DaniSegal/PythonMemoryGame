@@ -12,9 +12,16 @@ class GUI:
     RESET_BUTTON_COLOR = (50, 205, 50)
     RESET_BUTTON_RECT = pygame.Rect(SCREEN_WIDTH - 170, SCREEN_HEIGHT//2 - 60, 150, 40)
     PLAY_AGAIN_BUTTON_RECT = pygame.Rect(SCREEN_WIDTH//2 - 75, SCREEN_HEIGHT//2 - 30, 150, 40)
+    VOICE_CONTROL_BUTTON_RECT = pygame.Rect(150, 180, 250, 50)
     ONE_PLAYER_BUTTON_RECT = pygame.Rect(150, 250, 250, 50)
     TWO_PLAYER_BUTTON_RECT = pygame.Rect(150, 320, 250, 50)
     TIME_ATTACK_BUTTON_RECT = pygame.Rect(150, 390, 250, 50)
+    SPEAK_BUTTON_COLOR = (113, 77, 198)
+    SPEAK_BUTTON_RECT = pygame.Rect(SCREEN_WIDTH - 170, SCREEN_HEIGHT//2 - 150, 150, 40)
+    
+    player_selection_buttons = [VOICE_CONTROL_BUTTON_RECT, ONE_PLAYER_BUTTON_RECT, TWO_PLAYER_BUTTON_RECT, TIME_ATTACK_BUTTON_RECT]
+    game_over_buttons = [PLAY_AGAIN_BUTTON_RECT]
+    
 
     def __init__(self, mem_game) -> None:
 
@@ -78,6 +85,9 @@ class GUI:
     def draw_reset_button(self):
         self.draw_button(self.RESET_BUTTON_RECT, 'Reset', self.RESET_BUTTON_COLOR)
         
+    def draw_speak_button(self):
+        self.draw_button(self.SPEAK_BUTTON_RECT, 'Speak', self.SPEAK_BUTTON_COLOR)
+        
     def draw_play_again_button(self):
         self.draw_button(self.PLAY_AGAIN_BUTTON_RECT, 'Play Again', self.RESET_BUTTON_COLOR)
            
@@ -131,6 +141,7 @@ class GUI:
 
     def draw_main_menu(self):
         self.screen.fill(self.BACKGROUND_COLOR)
+        self.draw_button(self.VOICE_CONTROL_BUTTON_RECT, 'Voice Control')
         self.draw_button(self.ONE_PLAYER_BUTTON_RECT, '1 Player')
         self.draw_button(self.TWO_PLAYER_BUTTON_RECT, '2 Players')
         self.draw_button(self.TIME_ATTACK_BUTTON_RECT, 'Time Attack')  

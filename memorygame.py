@@ -8,6 +8,7 @@ import random
 from GameState import GameState
 from GUI import GUI
 from Card import Card
+import VoiceControl
 
 
 
@@ -94,6 +95,19 @@ class MemGame:
                 self.make_card_visible(card)
                 if len(self.selected_cards) == 2:
                     self.process_selected_cards()
+                    
+    def handle_voice_selection(self):
+        model = VoiceControl.init_vosk_model()
+        number = VoiceControl.recognize_numbers_from_mic(model)
+        
+        for card in self.cards_deck:
+            if card.index == number and not card.matched and not card.visible:
+                self.make_card_visible(card)
+                if len(self.selected_cards) == 2:
+                    self.process_selected_cards()
+                
+                    
+    
 
     def make_card_visible(self, card):
         card.visible = True
@@ -124,8 +138,11 @@ class MemGame:
     def handle_no_match_found(self):
         if self.game_state == GameState.TIME_ATTACK_MODE:
             self.attack_mode_logic()
-        else:
+        elif self.game_state == GameState.VOICE_CONTROL:
+            self.voice_control_logic()
+        else:    
             self.regular_game_logic()
+            
         pygame.display.flip()
         self.gui.unmatch_sound.play()
         pygame.time.wait(500)  # Wait half a second
@@ -151,6 +168,7 @@ class MemGame:
             self.time_attack_round_duration = 60
                         
     def handle_player_selection(self, position):
+        
         if self.gui.ONE_PLAYER_BUTTON_RECT.collidepoint(position):
             self.num_players = 1
             self.game_state = GameState.SINGLE_PLAYER
@@ -160,6 +178,9 @@ class MemGame:
         elif self.gui.TIME_ATTACK_BUTTON_RECT.collidepoint(position):
             self.num_players = 1
             self.game_state = GameState.TIME_ATTACK_MODE
+        elif self.gui.VOICE_CONTROL_BUTTON_RECT.collidepoint(position):
+            self.num_players = 1
+            self.game_state = GameState.VOICE_CONTROL
             
         self.start_ticks = pygame.time.get_ticks()
             
@@ -185,16 +206,31 @@ class MemGame:
             
         elif self.game_state in (GameState.SINGLE_PLAYER, GameState.TIME_ATTACK_MODE, GameState.TWO_PLAYERS):
             self.handle_card_selection(mouse_pos)
+            
+        elif self.game_state == GameState.VOICE_CONTROL:
+            if self.gui.SPEAK_BUTTON_RECT.collidepoint(mouse_pos):
+                    self.handle_voice_selection()
                           
     def draw_regular_game_components(self):
         self.gui.draw_board(self.cards_deck)
         self.gui.draw_timer()
         self.gui.draw_tries_counter()
-        self.gui.draw_player_scores()
-        self.gui.draw_turn_indication()    
+        
+        if self.num_players == 2: 
+            self.gui.draw_player_scores()
+            self.gui.draw_turn_indication() 
+               
         if(not self.all_matched()):
            self.gui.draw_reset_button()
-    
+           
+    def draw_voice_control_components(self):
+        self.gui.draw_board(self.cards_deck)
+        self.gui.draw_timer()
+        self.gui.draw_tries_counter()
+        self.gui.draw_speak_button()
+        if(not self.all_matched()):
+           self.gui.draw_reset_button()
+        
     def attack_mode_logic(self):
         
         self.gui.draw_board(self.cards_deck)
@@ -218,6 +254,14 @@ class MemGame:
                 self.gui.draw_well_done_message()
                 self.gui.draw_play_again_button()
                           
+    def voice_control_logic(self):
+        self.draw_voice_control_components()
+        if self.all_matched():
+            self.game_state = GameState.GAME_OVER
+            self.gui.draw_well_done_message()
+            self.gui.draw_play_again_button()
+        
+    
     def run(self):
         running = True
         while running:
@@ -227,8 +271,10 @@ class MemGame:
            
             if self.game_state != GameState.GAME_OVER and self.game_state != GameState.PLAYER_SELECTION:
                 self.elapsed_time = int((pygame.time.get_ticks()-self.start_ticks)/1000)
-            
-            if self.game_state == GameState.PLAYER_SELECTION:
+                
+            if self.game_state == GameState.VOICE_CONTROL:
+                self.voice_control_logic()
+            elif self.game_state == GameState.PLAYER_SELECTION:
                 self.gui.draw_main_menu()
             elif self.game_state == GameState.TIME_ATTACK_MODE:
                 self.attack_mode_logic()
