@@ -43,12 +43,14 @@ class MemGame:
         card_images = self.card_images * 2  # Create pairs
         random.shuffle(card_images)
         y_offset = 60
+        index = 1
         for row in range(board_rows):
             for col in range(board_cols):
                 position = (
                     col * (card_size + card_gap) + card_gap,
                     row * (card_size + card_gap) + card_gap + y_offset,)
-                card = Card(card_images.pop(), position)
+                card = Card(card_images.pop(), position, index)
+                index += 1
                 self.cards_deck.append(card)
 
     def load_card_images(self):
@@ -142,6 +144,7 @@ class MemGame:
         self.fill_cards_deck()
         self.start_ticks = pygame.time.get_ticks()
         self.elapsed_time = 0
+        Card.current_card_index = 0
         
         if self.game_state == GameState.PLAYER_SELECTION:
             self.update_player_turn_text()
