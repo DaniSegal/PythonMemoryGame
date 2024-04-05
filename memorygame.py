@@ -10,6 +10,7 @@ from GUI import GUI
 from Card import Card
 
 
+
 class MemGame:
 
     def __init__(self):   
@@ -22,11 +23,18 @@ class MemGame:
         self.card_images = []
         self.selected_cards = []
         self.gui = GUI(self)
+        
+        self.time_attack_round_duration = 60
         self.matched_cards = 0
         self.match_tries_count = 0
         self.load_card_images()
         self.fill_cards_deck()
         self.update_player_turn_text()
+
+        self.clock = pygame.time.Clock()
+        self.start_ticks = pygame.time.get_ticks()
+        self.elapsed_time = 0
+        
         
     def fill_cards_deck(self):
         board_rows = self.gui.BOARD_ROWS
@@ -56,13 +64,9 @@ class MemGame:
         """Updates the player turn text based on the current player."""   
         # Ensuring the player turn text updates correctly
         turn_text = f"Player {self.current_player + 1}'s Turn"
-        self.gui.player_turn_text_surf = self.gui.FONT.render(turn_text, True, (255, 255, 255))
+        self.gui.player_turn_text_surf = self.gui.font.render(turn_text, True, (255, 255, 255))
 
     def toggle_player_turn(self):
-        """Toggles the turn between player 1 and player 2."""
-        # if self.num_players == 2:
-        #     self.current_player = (self.current_player + 1) % 2
-        #     self.update_player_turn_text()
         self.current_player = (self.current_player + 1) % self.num_players
         self.update_player_turn_text()
         
@@ -83,47 +87,50 @@ class MemGame:
         """Checks if the mouse is hovering over the given rectangle."""
         return rect.collidepoint(pygame.mouse.get_pos())
 
-    def handle_click(self, position):
-        if self.gui.RESET_BUTTON_RECT.collidepoint(position):
-            self.reset_game()
-            
-        if self.all_matched() and self.gui.PLAY_AGAIN_BUTTON_RECT.collidepoint(position):
-            self.reset_game()
-            
+    def handle_card_selection(self, position):
         for card in self.cards_deck:
             if card.rect.collidepoint(position) and not card.matched and not card.visible:
-                card.visible = True
-                self.selected_cards.append(card)
+                self.make_card_visible(card)
                 if len(self.selected_cards) == 2:
-                    match_found = self.check_for_match()
-                    if not match_found:
-                        self.toggle_player_turn()
-                    else:
-                        # Update score for current player if a match is found
-                        self.player_scores[self.current_player] += 1
-                    self.match_tries_count += 1
-                    self.selected_cards.clear()
-                    
-    def check_for_match(self):
-        """Check if the selected cards are a match."""
-        match_found = False
-        if self.selected_cards[0].image == self.selected_cards[1].image:
-            for card in self.selected_cards:
-                card.matched = True
-            self.player_scores[self.current_player] += 1  # Update score for current player
-            match_found = True    
-            self.gui.match_sound.play()
-            self.matched_cards += 2
-        else:
-            self.draw_game_components()
-            pygame.display.flip()
-            self.gui.unmatch_sound.play()
-            pygame.time.wait(500)  # Wait half a second
-            for card in self.selected_cards:
-                card.visible = False
+                    self.process_selected_cards()
+
+    def make_card_visible(self, card):
+        card.visible = True
+        self.selected_cards.append(card)
+
+    def process_selected_cards(self):
+        match_found = self.check_for_match()
+        if not match_found:
+            self.toggle_player_turn()
+        self.match_tries_count += 1
         self.selected_cards.clear()
-        return match_found
-       
+
+    def check_for_match(self):
+        if self.selected_cards[0].image == self.selected_cards[1].image:
+            self.set_cards_as_matched()
+            return True
+        else:
+            self.handle_no_match_found()
+            return False
+
+    def set_cards_as_matched(self):
+        for card in self.selected_cards:
+            card.matched = True
+        self.player_scores[self.current_player] += 1
+        self.gui.match_sound.play()
+        self.matched_cards += 2
+
+    def handle_no_match_found(self):
+        if self.game_state == GameState.TIME_ATTACK_MODE:
+            self.draw_time_attack_components()
+        else:
+            self.draw_regular_game_components()
+        pygame.display.flip()
+        self.gui.unmatch_sound.play()
+        pygame.time.wait(500)  # Wait half a second
+        for card in self.selected_cards:
+            card.visible = False
+                 
     def reset_game(self):
         """Resets the game to the initial state."""
         self.cards_deck.clear()
@@ -132,54 +139,99 @@ class MemGame:
         self.match_tries_count = 0
         self.player_scores = [0, 0]
         self.current_player = 0
-        self.game_state = GameState.PLAYER_SELECTION
-        self.update_player_turn_text()
         self.load_card_images()
         self.fill_cards_deck()
-        self.start_ticks = pygame.time.get_ticks()  # Reset the timer
-           
+        self.start_ticks = pygame.time.get_ticks()
+        self.elapsed_time = 0
+        
+        if self.game_state == GameState.TIME_ATTACK_MODE:
+            pass
+        else: 
+            self.game_state = GameState.PLAYER_SELECTION
+            self.update_player_turn_text()
+            self.gui.start_ticks = pygame.time.get_ticks()  
+            self.time_attack_rounds_won = 0
+            self.time_attack_round_duration = 60
+                        
     def handle_player_selection(self, position):
-        """Updated to correctly modify game_state of GameManager instance."""
         if self.gui.ONE_PLAYER_BUTTON_RECT.collidepoint(position):
             self.num_players = 1
+            self.game_state = GameState.SINGLE_PLAYER
         elif self.gui.TWO_PLAYER_BUTTON_RECT.collidepoint(position):
             self.num_players = 2
-        self.game_state = GameState.PLAYING
+            self.game_state = GameState.TWO_PLAYERS
+        elif self.gui.TIME_ATTACK_BUTTON_RECT.collidepoint(position):
+            self.num_players = 1
+            self.game_state = GameState.TIME_ATTACK_MODE
             
-    def draw_game_components(self):
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self.process_mouse_click(event.pos)
+        return True
+    
+    def process_mouse_click(self, mouse_pos):
+        if self.game_state == GameState.PLAYER_SELECTION:
+            self.handle_player_selection(mouse_pos)
+        elif self.gui.RESET_BUTTON_RECT.collidepoint(mouse_pos):
+            self.reset_game()    
+        elif self.all_matched() and self.gui.PLAY_AGAIN_BUTTON_RECT.collidepoint(mouse_pos):
+            self.reset_game()
+        elif self.game_state in (GameState.SINGLE_PLAYER, GameState.TIME_ATTACK_MODE, GameState.TWO_PLAYERS):
+            self.handle_card_selection(mouse_pos)
+            
+    def draw_time_attack_components(self):
         self.gui.draw_board(self.cards_deck)
+        self.gui.draw_countdown_timer(self.elapsed_time, self.time_attack_round_duration)
+        
+                
+    def draw_regular_game_components(self):
+        self.gui.draw_board(self.cards_deck)
+        self.gui.draw_timer()
         self.gui.draw_tries_counter()
         self.gui.draw_player_scores()
         self.gui.draw_turn_indication()    
         if(not self.all_matched()):
            self.gui.draw_reset_button()
+    
+    def attack_mode_logic(self):
+            self.draw_time_attack_components()
+            if self.all_matched():
+                if self.time_attack_round_duration == 55:
+                    self.gui.draw_well_done_message()
+                    self.gui.draw_play_again_button()
+                else:    
+                    self.time_attack_round_duration -= 5
+                    self.reset_game()
+                         
+    def regular_game_logic(self):
+            self.draw_regular_game_components() 
+            if self.all_matched():
+                    self.gui.draw_well_done_message()
+                    self.gui.draw_play_again_button()
             
+                       
     def run(self):
         running = True
         while running:
             self.update_cursor()
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.game_state == GameState.PLAYER_SELECTION:
-                        self.handle_player_selection(pygame.mouse.get_pos())
-                    elif self.game_state == GameState.PLAYING:
-                        self.handle_click(pygame.mouse.get_pos())
-
+            running = self.handle_events()
+            self.elapsed_time = int((pygame.time.get_ticks()-self.start_ticks)/1000)
+            
             if self.game_state == GameState.PLAYER_SELECTION:
-                self.gui.draw_player_selection_screen()
-            else:
-                self.draw_game_components()
-
-            if self.all_matched():
-                self.gui.draw_well_done_message()
-                self.gui.draw_play_again_button()
-
+                self.gui.draw_main_menu()
+            elif self.game_state == GameState.TIME_ATTACK_MODE:
+                self.attack_mode_logic()
+            elif self.game_state != GameState.GAME_OVER:
+                self.regular_game_logic() 
+            self.clock.tick(60)
             pygame.display.flip()
-            self.gui.clock.tick(60)
+            
         pygame.quit()
+            
+       
 
-# Uncomment the following lines to run the game
 game = MemGame()
 game.run()
