@@ -21,7 +21,7 @@ class GUI:
     
     player_selection_buttons = [VOICE_CONTROL_BUTTON_RECT, ONE_PLAYER_BUTTON_RECT, TWO_PLAYER_BUTTON_RECT, TIME_ATTACK_BUTTON_RECT]
     game_over_buttons = [PLAY_AGAIN_BUTTON_RECT]
-    
+    voice_control_buttons = [SPEAK_BUTTON_RECT]
 
     def __init__(self, mem_game) -> None:
 

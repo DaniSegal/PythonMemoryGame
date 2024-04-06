@@ -76,15 +76,27 @@ class MemGame:
         return self.matched_cards == 16
     
     def update_cursor(self):
-        """Updates the cursor image based on its position."""
-        # Change to hand cursor for all clickable items
-        if (self.is_hovering(self.gui.RESET_BUTTON_RECT) or
-            self.is_hovering(self.gui.PLAY_AGAIN_BUTTON_RECT) or
-            any(self.is_hovering(card.rect) for card in self.cards_deck if not card.matched)):
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
-        else:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        should_be_hand = any(self.is_hovering(button) for button in self.get_current_buttons())
 
+        # Check if hovering over any card that hasn't been matched yet.
+        if not should_be_hand:
+            should_be_hand = any(self.is_hovering(card.rect) for card in self.cards_deck if not card.matched)
+
+        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND if should_be_hand else pygame.SYSTEM_CURSOR_ARROW)
+
+    def get_current_buttons(self):
+        buttons = []
+        if self.game_state == GameState.PLAYER_SELECTION:
+            buttons.extend(self.gui.player_selection_buttons)
+        if self.game_state == GameState.VOICE_CONTROL:
+            buttons.extend(self.gui.voice_control_buttons)
+        if self.game_state == GameState.GAME_OVER:
+            buttons.extend(self.gui.game_over_buttons)
+
+        buttons.append(self.gui.RESET_BUTTON_RECT)  # Always include the reset button
+
+        return buttons
+    
     def is_hovering(self, rect):
         """Checks if the mouse is hovering over the given rectangle."""
         return rect.collidepoint(pygame.mouse.get_pos())
@@ -105,10 +117,7 @@ class MemGame:
                 self.make_card_visible(card)
                 if len(self.selected_cards) == 2:
                     self.process_selected_cards()
-                
-                    
-    
-
+                   
     def make_card_visible(self, card):
         card.visible = True
         self.selected_cards.append(card)
@@ -259,8 +268,7 @@ class MemGame:
         if self.all_matched():
             self.game_state = GameState.GAME_OVER
             self.gui.draw_well_done_message()
-            self.gui.draw_play_again_button()
-        
+            self.gui.draw_play_again_button()     
     
     def run(self):
         running = True
