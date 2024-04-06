@@ -78,9 +78,9 @@ class MemGame:
     def update_cursor(self):
         should_be_hand = any(self.is_hovering(button) for button in self.get_current_buttons())
 
-        # Check if hovering over any card that hasn't been matched yet.
-        if not should_be_hand:
-            should_be_hand = any(self.is_hovering(card.rect) for card in self.cards_deck if not card.matched)
+        if self.game_state != GameState.VOICE_CONTROL:
+            if not should_be_hand:
+                should_be_hand = any(self.is_hovering(card.rect) for card in self.cards_deck if not card.matched)
 
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND if should_be_hand else pygame.SYSTEM_CURSOR_ARROW)
 
@@ -259,10 +259,15 @@ class MemGame:
     def regular_game_logic(self):
         self.draw_regular_game_components() 
         if self.all_matched():
+                if self.num_players == 2:
+                    winner = 1
+                    if self.player_scores[0] < self.player_scores[1]: winner = 2
+                    self.gui.draw_winner_message(winner)
+                else: 
+                    self.gui.draw_well_done_message()    
                 self.game_state = GameState.GAME_OVER
-                self.gui.draw_well_done_message()
                 self.gui.draw_play_again_button()
-                          
+                                         
     def voice_control_logic(self):
         self.draw_voice_control_components()
         if self.all_matched():

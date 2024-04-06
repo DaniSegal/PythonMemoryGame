@@ -98,6 +98,13 @@ class GUI:
         text_rect = self.well_done_surf.get_rect(center=(self.SCREEN_WIDTH//2, self.SCREEN_HEIGHT//2 - 50))
         self.screen.blit(self.well_done_surf, text_rect)
         
+    def draw_winner_message(self, winner):
+        
+        winner_text = f'AND THE WINNER IS ........ PLAYER NUMBER {winner} !!!'
+        self.winner_msg_surf = self.font.render(winner_text, True, (255, 215, 0), self.BACKGROUND_COLOR)
+        text_rect = self.winner_msg_surf.get_rect(center=(self.SCREEN_WIDTH//2, self.SCREEN_HEIGHT//2 - 50))
+        self.screen.blit(self.winner_msg_surf, text_rect)
+             
     def draw_game_over_screen(self):
         """Draws the game over screen with a message."""
         self.screen.fill(self.BACKGROUND_COLOR)  # Optional: Change to a darker shade if desired
@@ -130,9 +137,7 @@ class GUI:
 
         self.draw_play_again_button()
         pygame.display.flip()  # Update the display
-        
-        
-         
+              
     def draw_button(self, rect, text, color=(255, 255, 255)):
         pygame.draw.rect(self.screen, color, rect)
         text_surface = self.font.render(text, True, (0, 0, 0))
