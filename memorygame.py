@@ -78,7 +78,7 @@ class MemGame:
     def update_cursor(self):
         should_be_hand = any(self.is_hovering(button) for button in self.get_current_buttons())
 
-        if self.game_state != GameState.VOICE_CONTROL:
+        if self.game_state != GameState.VOICE_CONTROL and self.game_state != GameState.PLAYER_SELECTION:
             if not should_be_hand:
                 should_be_hand = any(self.is_hovering(card.rect) for card in self.cards_deck if not card.matched)
 
@@ -279,7 +279,6 @@ class MemGame:
         running = True
         while running:
             self.update_cursor()
-            
             running = self.handle_events()
            
             if self.game_state != GameState.GAME_OVER and self.game_state != GameState.PLAYER_SELECTION:
